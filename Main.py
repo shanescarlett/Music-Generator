@@ -16,6 +16,7 @@ for file in folder:
 	score.transpose(intervalToC, inPlace = True)
 	count += 1
 
+	p = score.parts
 	c = score.chordify().getElementsByClass('Chord')
 	n = score.flat.getElementsByClass('Note')
 	# Extract chords
