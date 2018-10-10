@@ -16,10 +16,12 @@ for file in folder:
 	score.transpose(intervalToC, inPlace = True)
 	count += 1
 
+	c = score.chordify().getElementsByClass('Chord')
+	n = score.flat.getElementsByClass('Note')
 	# Extract chords
-	chords.append(score.chordify().getElementsByClass('Chord'))
+	chords.append(score.chordify().recurse().getElementsByClass('Chord'))
 
 	# Flatten
-	notes.append(score.flat.getElementsByClass('Note'))
+	notes.append(score.flat.recurse().getElementsByClass('Note'))
 
 print('End')
