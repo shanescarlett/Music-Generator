@@ -15,4 +15,7 @@ for file in folder:
 	score.transpose(intervalToC, inPlace = True)
 	count += 1
 
+	# Flatten
+	notes.append(score.flat.getElementsByClass('Note'))
+
 print('End')
