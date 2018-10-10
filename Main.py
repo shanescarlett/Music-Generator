@@ -3,6 +3,7 @@ import music21
 from music21 import converter, instrument, note, chord
 
 notes = []
+chords = []
 folder = glob.glob("C:/Users/Main/Documents/Data/Chopin/*.mid")
 count = 1
 for file in folder:
@@ -14,6 +15,9 @@ for file in folder:
 	intervalToC: music21.interval.Interval = music21.interval.Interval(key.tonic, music21.pitch.Pitch('C'))
 	score.transpose(intervalToC, inPlace = True)
 	count += 1
+
+	# Extract chords
+	chords.append(score.chordify().getElementsByClass('Chord'))
 
 	# Flatten
 	notes.append(score.flat.getElementsByClass('Note'))
