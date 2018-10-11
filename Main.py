@@ -2,8 +2,7 @@ import glob
 import music21
 from music21 import converter, instrument, note, chord
 
-notes = []
-chords = []
+notesAndChords = []
 folder = glob.glob("C:/Users/Main/Documents/Data/Chopin/*.mid")
 count = 1
 for file in folder:
@@ -16,13 +15,16 @@ for file in folder:
 	score.transpose(intervalToC, inPlace = True)
 	count += 1
 
-	p = score.parts
-	c = score.chordify().getElementsByClass('Chord')
-	n = score.flat.getElementsByClass('Note')
-	# Extract chords
-	chords.append(score.chordify().recurse().getElementsByClass('Chord'))
+	parts = music21.instrument.partitionByInstrument(score)
+	if parts:  # file has instrument parts
+		notes_to_parse = parts.parts[0].recurse()
+	else:  # file has notes in a flat structure
+		notes_to_parse = score.flat.notes
 
-	# Flatten
-	notes.append(score.flat.recurse().getElementsByClass('Note'))
+	for element in notes_to_parse:
+		if isinstance(element, note.Note):
+			notesAndChords.append(element)
+		elif isinstance(element, chord.Chord):
+			notesAndChords.append(element)
 
 print('End')
