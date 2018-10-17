@@ -83,9 +83,8 @@ def createModelIO(slices, sequenceSize):
 		networkOutput.append(slices[i + sequenceSize])
 
 	n_patterns = len(networkInput)
-	# reshape the input into a format compatible with LSTM layers
-	networkInput = np.reshape(networkInput, (n_patterns, sequenceSize, 1))
+	networkInput = np.reshape(networkInput, (n_patterns, sequenceSize, 128))
 	# normalize input
 	networkInput = networkInput / float(128)
-	networkOutput = np_utils.to_categorical(networkOutput)
-	return networkInput, networkOutput
+	#networkOutput = np_utils.to_categorical(networkOutput, num_classes = 2)
+	return networkInput, np.asarray(networkOutput)
