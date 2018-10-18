@@ -74,17 +74,17 @@ def encodeSlices(slices):
 	return oneHotEncoded
 
 
-def createModelIO(slices, sequenceSize):
+def createModelIO(slices, sequenceSize, stride):
 	networkInput = []
 	networkOutput = []
 	# create input sequences and the corresponding outputs
-	for i in range(0, len(slices) - sequenceSize, 1):
+	for i in range(0, len(slices) - sequenceSize, stride):
 		networkInput.append(slices[i:i + sequenceSize])
 		networkOutput.append(slices[i + sequenceSize])
 
 	n_patterns = len(networkInput)
 	networkInput = np.reshape(networkInput, (n_patterns, sequenceSize, 128))
 	# normalize input
-	networkInput = networkInput / float(128)
+	# networkInput = networkInput / float(128)
 	#networkOutput = np_utils.to_categorical(networkOutput, num_classes = 2)
 	return networkInput, np.asarray(networkOutput)
