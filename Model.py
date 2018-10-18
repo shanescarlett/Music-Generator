@@ -1,20 +1,57 @@
 import keras
+import tensorflow
+from keras.metrics import *
 
 
 def getModel(modelInput):
-	from keras.layers import LSTM, Dropout, Dense, Activation
+	from keras.layers import Dropout, Dense, Activation, CuDNNLSTM
 	from keras.optimizers import Adam
-	x = LSTM(512, activation = 'relu', return_sequences=True, input_shape = (modelInput.shape[1], modelInput.shape[2]))(modelInput)
-	x = Dropout(0.25)(x)
-	x = LSTM(1024, activation = 'relu', return_sequences=True)(x)
+	x = CuDNNLSTM(4096, return_sequences=True)(modelInput)
+	x = Activation('relu')(x)
 	x = Dropout(0.3)(x)
-	x = LSTM(512, activation = 'relu')(x)
-	x = Dense(512)(x)
-	modelOutput = Dense(128, activation = 'softmax')(x)
+	x = CuDNNLSTM(2048, return_sequences=True)(x)
+	x = Activation('relu')(x)
+	x = Dropout(0.3)(x)
+	x = CuDNNLSTM(1024, return_sequences = True)(x)
+	x = Activation('relu')(x)
+	x = Dropout(0.3)(x)
+	x = CuDNNLSTM(512, return_sequences = True)(x)
+	x = Activation('relu')(x)
+	x = Dropout(0.3)(x)
+	x = CuDNNLSTM(256)(x)
+	x = Activation('relu')(x)
+	x = Dense(256)(x)
+	modelOutput = Dense(128, activation = 'sigmoid')(x)
 
 	model = keras.Model(modelInput, modelOutput)
-	model.compile(loss = 'binary_crossentropy', optimizer = Adam(), metrics = ['acc'])
+	model.compile(loss = lossFunction(), optimizer = Adam(), metrics = ['acc'])
 	return model
+
+
+def lossFunction():
+	def f_(target, output):
+		"""
+		   Weighted binary crossentropy between an output tensor
+		   and a target tensor. POS_WEIGHT is used as a multiplier
+		   for the positive targets.
+
+		   Combination of the following functions:
+		   * keras.losses.binary_crossentropy
+		   * keras.backend.tensorflow_backend.binary_crossentropy
+		   * tf.nn.weighted_cross_entropy_with_logits
+		   """
+		# transform back to logits
+		import keras.backend.tensorflow_backend as tfb
+		POSITIVE_WEIGHT = 30
+		_epsilon = tfb._to_tensor(tfb.epsilon(), output.dtype.base_dtype)
+		output = tensorflow.clip_by_value(output, _epsilon, 1 - _epsilon)
+		output = tensorflow.log(output / (1 - output))
+		# compute weighted loss
+		loss = tensorflow.nn.weighted_cross_entropy_with_logits(targets = target,
+		                                                logits = output,
+		                                                pos_weight = POSITIVE_WEIGHT)
+		return tensorflow.reduce_mean(loss, axis = -1)
+	return f_
 
 
 def trainModel(model, num_epochs, filename, x_train, y_train, batch_size, sample_weight = None, class_weight = None,
@@ -30,3 +67,9 @@ def trainModel(model, num_epochs, filename, x_train, y_train, batch_size, sample
 	                    callbacks = [checkpoint, tensor_board])
 
 	return history
+
+
+def loadModel(model, fileName):
+	path = 'weights/' + fileName
+	model.load_weights(path)
+
