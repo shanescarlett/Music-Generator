@@ -36,6 +36,39 @@ def getModel(modelInput):
 	return model
 
 
+def getModel2(modelInput):
+	from keras.layers import Dropout, Dense, Activation, CuDNNLSTM, TimeDistributed, Conv1D, Reshape
+	from keras.optimizers import Adam, RMSprop
+
+	# x = CuDNNLSTM(512, return_sequences=True, bias_initializer = 'random_uniform')(modelInput)
+	# x = Activation('relu')(x)
+	# x = Dropout(0.3)(x)
+
+	x = CuDNNLSTM(1024, return_sequences=False, bias_initializer = 'random_uniform')(modelInput)
+	x = Activation('sigmoid')(x)
+	#
+	# x = CuDNNLSTM(1024, return_sequences = True)(x)
+	# x = Activation('relu')(x)
+	# x = Dropout(0.3)(x)
+
+	# x = CuDNNLSTM(512, return_sequences = True)(x)
+	# x = Activation('relu')(x)
+	# x = Dropout(0.3)(x)
+
+	# x = CuDNNLSTM(256)(x)
+	# x = Activation('relu')(x)
+	# x = Dropout(0.3)(x)
+
+	# x = Dense(256, activation = 'relu')(x)
+	# x = Dropout(0.3)(x)
+	#
+	modelOutput = Dense(257, activation = 'softmax')(x)
+
+	model = keras.Model(modelInput, modelOutput)
+	model.compile(loss = lossFunction(), optimizer = RMSprop(), metrics = ['acc'])
+	return model
+
+
 def lossFunction():
 	def f_(target, output):
 		"""
@@ -50,7 +83,7 @@ def lossFunction():
 		   """
 		# transform back to logits
 		import keras.backend.tensorflow_backend as tfb
-		POSITIVE_WEIGHT = 2
+		POSITIVE_WEIGHT = 10
 		_epsilon = tfb._to_tensor(tfb.epsilon(), output.dtype.base_dtype)
 		output = tensorflow.clip_by_value(output, _epsilon, 1 - _epsilon)
 		output = tensorflow.log(output / (1 - output))
