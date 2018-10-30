@@ -12,6 +12,13 @@ def ticksToMilliseconds(msPerBeat, ticksPerBeat):
 	return msPerBeat/ticksPerBeat
 
 
+def max(first, second):
+	if first < second:
+		return second
+	else:
+		return first
+
+
 def readFileAsNoteEventList(path):
 	midiFile = music21.midi.MidiFile()
 	midiFile.open(path, attrib = 'rb')
@@ -26,14 +33,14 @@ def readFileAsNoteEventList(path):
 			if event.isDeltaTime():
 				timeCounter += event.time
 			if event.type is 'SET_TEMPO':
-				allEvents.append(['TEMPO', parseTempo(event.getBytes()), timeCounter])
+				allEvents.append(['TEMPO', parseTempo(event.getBytes()), 0, timeCounter])
 			if event.isNoteOn():
-				allEvents.append(['NOTE_ON', event.pitch, timeCounter])
+				allEvents.append(['NOTE_ON', event.pitch, event.velocity, timeCounter])
 			if event.isNoteOff():
-				allEvents.append(['NOTE_OFF', event.pitch, timeCounter])
+				allEvents.append(['NOTE_OFF', event.pitch, event.velocity, timeCounter])
 
 	# Sort event ledger
-	allEvents.sort(key=lambda x: x[2])
+	allEvents.sort(key=lambda x: x[3])
 
 	# Write real times to events
 	currentTempo = 500
@@ -41,26 +48,29 @@ def readFileAsNoteEventList(path):
 		if event[0] is 'TEMPO':
 			currentTempo = event[1]
 		if event[0] is 'NOTE_ON' or event[0] is 'NOTE_OFF':
-			event[2] = event[2] * ticksToMilliseconds(currentTempo, ticksPerQuarterNote)
+			event[3] = np.round(event[3] * ticksToMilliseconds(currentTempo, ticksPerQuarterNote))
 
 	return [s for s in allEvents if s[0] != 'TEMPO']
 
 
 def encodeNoteEvents(noteEvents):
 	encoded = []
-	lastNoteTime = 0
+	lastNoteTime = noteEvents[0][3]
 	currentLine = np.zeros(128+128+1)
+	noteEvents.sort(key = lambda x: x[3])
 	for event in noteEvents:
-		if event[2] == lastNoteTime:
-			if event[0] is 'NOTE_ON':
-				currentLine[event[1]] = 1
-			elif event[0] is 'NOTE_OFF':
-				currentLine[event[1] + 128] = 1
-		else:
+		if event[3] != lastNoteTime:
 			encoded.append(currentLine)
-			currentLine = np.zeros(128+128+1)
-			currentLine[-1] = (event[2] - lastNoteTime) / 1000
-			lastNoteTime = event[2]
+			currentLine = np.zeros(128 + 128 + 1)
+			deltaTime = event[3] - lastNoteTime
+			currentLine[-1] = np.tanh(max(0, deltaTime / 1000))
+			lastNoteTime = event[3]
+
+
+		if event[0] is 'NOTE_ON':
+			currentLine[event[1]] = event[2] / 128
+		elif event[0] is 'NOTE_OFF':
+			currentLine[event[1] + 128] = 1
 	return encoded
 
 
