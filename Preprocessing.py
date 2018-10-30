@@ -84,7 +84,4 @@ def createModelIO(slices, sequenceSize, stride):
 
 	n_patterns = len(networkInput)
 	networkInput = np.reshape(networkInput, (n_patterns, sequenceSize, 128))
-	# normalize input
-	# networkInput = networkInput / float(128)
-	#networkOutput = np_utils.to_categorical(networkOutput, num_classes = 2)
 	return networkInput, np.asarray(networkOutput)
