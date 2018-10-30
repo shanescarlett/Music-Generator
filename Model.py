@@ -65,7 +65,20 @@ def getModel2(modelInput):
 	modelOutput = Dense(257, activation = 'softmax')(x)
 
 	model = keras.Model(modelInput, modelOutput)
-	model.compile(loss = lossFunction(), optimizer = RMSprop(), metrics = ['acc'])
+	model.compile(loss = 'mean_squared_logarithmic_error', optimizer = RMSprop(), metrics = ['acc'])
+	return model
+
+
+def getDeltaTimeModel(modelInput):
+	from keras.layers import Dense, Activation, CuDNNLSTM
+	from keras.optimizers import RMSprop
+
+	x = CuDNNLSTM(1024, return_sequences = False, bias_initializer = 'random_uniform')(modelInput)
+	# x = Activation('sigmoid')(x)
+	modelOutput = Dense(1, activation = 'sigmoid')(x)
+
+	model = keras.Model(modelInput, modelOutput)
+	model.compile(loss = 'mean_squared_error', optimizer = 'adam', metrics = ['acc'])
 	return model
 
 
