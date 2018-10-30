@@ -114,24 +114,29 @@ def preprocessData2(fileName):
 	for file in folder:
 		print('Processing file %d of %d: %s' % (count, len(folder), repr(file)))
 		noteEvents = pp.readFileAsNoteEventList(file)
-		encodedData.extend(pp.encodeNoteEvents(noteEvents))
+		enc = pp.encodeNoteEvents(noteEvents)
+		encodedData.extend(enc)
 		count += 1
 
+
+	# np.savetxt('test.csv', np.asarray(encodedData), delimiter = ',')
 	with open(fileName, 'wb') as f:
 		pickle.dump(encodedData, f)
 	return encodedData
 
 
-def train2(sequenceLength):
+def train2(sequenceLength, loadPrevious = False):
 	print('Trainer')
 	modelX, modelY = loadData('model2.dat')
 	modelInput = keras.layers.Input((sequenceLength, 257))
 	model = m.getModel2(modelInput)
+	if loadPrevious:
+		m.loadModel(model, 'model2.weights')
 	m.trainModel(model, num_epochs = 1000, filename = 'model2.weights', x_train = modelX, y_train = modelY,
-	             batch_size = 32)
+	             batch_size = 8)
 
 
-def generate2():
+def generate2(length):
 	print('Generator')
 	modelX, modelY = loadData('model2.dat')
 	modelInput = keras.layers.Input(modelX.shape[1:])
@@ -142,43 +147,36 @@ def generate2():
 	pattern = modelX[start]
 	prediction_output = []
 
-	for i in range(256):
+	for i in range(length):
 		prediction_input = np.reshape(pattern, (1, len(pattern), 257))
 		prediction = model.predict(prediction_input, verbose = 0)
-		result = divMax(prediction)
+		# result = divMax(prediction)
+		result = prediction
 		prediction_output.append(result)
 		pattern = np.concatenate((pattern, result))
 		pattern = pattern[1:]
 
 	print('Generator finished')
-	return prediction_output
+	output = np.array(prediction_output)
+	output = output.reshape((length, 257))
+
+	np.savetxt('test.csv', np.asarray(output), delimiter = ',')
+	return output
+
+
+def save2(data):
+	import Postprocessing as pp
+	pp.encodedToMidi(data)
 
 
 def main():
-	# preprocessData('intermediate.dat')
+	sequenceLength = 8
 
-	# makeData('intermediate.dat', 'model.dat')
-	# train()
-	#
-	# generated = generate()
-	# with open('generated.dat', 'wb') as f:
-	# 	pickle.dump(generated, f)
-	#
-	# with open('generated.dat', 'rb') as f:
-	# 	generated = pickle.load(f)
-	#
-	# generated = np.reshape(generated, (128, 128))
-	# print(np.shape(generated))
-	#
-	#
-	# print('Main function done')
-
-	sequenceLength = 16
-
-	#preprocessData2('intermediate2.dat')
-	#makeData2('intermediate2.dat', 'model2.dat', sequenceLength)
-	train2(sequenceLength)
-	generate2()
+	# preprocessData2('intermediate2.dat')
+	# makeData2('intermediate2.dat', 'model2.dat', sequenceLength)
+	# train2(sequenceLength, loadPrevious = True)
+	output = generate2(length = 1024)
+	save2(output)
 
 
 main()
