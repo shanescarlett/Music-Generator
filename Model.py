@@ -40,32 +40,22 @@ def getModel2(modelInput):
 	from keras.layers import Dropout, Dense, Activation, CuDNNLSTM, TimeDistributed, Conv1D, Reshape
 	from keras.optimizers import Adam, RMSprop
 
-	# x = CuDNNLSTM(512, return_sequences=True, bias_initializer = 'random_uniform')(modelInput)
-	# x = Activation('relu')(x)
-	# x = Dropout(0.3)(x)
+	x = Conv1D(32, (32))(modelInput)
+	x = CuDNNLSTM(512, return_sequences=True, bias_initializer = 'random_uniform')(x)
+	x = Activation('relu')(x)
+	x = Dropout(0.3)(x)
 
-	x = CuDNNLSTM(1024, return_sequences=False, bias_initializer = 'random_uniform')(modelInput)
-	x = Activation('sigmoid')(x)
-	#
-	# x = CuDNNLSTM(1024, return_sequences = True)(x)
-	# x = Activation('relu')(x)
-	# x = Dropout(0.3)(x)
+	# x = CuDNNLSTM(1024, return_sequences=False, bias_initializer = 'random_uniform')(modelInput)
+	# x = Activation('sigmoid')(x)
 
-	# x = CuDNNLSTM(512, return_sequences = True)(x)
-	# x = Activation('relu')(x)
-	# x = Dropout(0.3)(x)
+	x = CuDNNLSTM(512, return_sequences = False)(x)
+	x = Activation('relu')(x)
+	x = Dropout(0.3)(x)
 
-	# x = CuDNNLSTM(256)(x)
-	# x = Activation('relu')(x)
-	# x = Dropout(0.3)(x)
-
-	# x = Dense(256, activation = 'relu')(x)
-	# x = Dropout(0.3)(x)
-	#
 	modelOutput = Dense(257, activation = 'softmax')(x)
 
 	model = keras.Model(modelInput, modelOutput)
-	model.compile(loss = 'mean_squared_logarithmic_error', optimizer = RMSprop(), metrics = ['acc'])
+	model.compile(loss = 'mean_squared_error', optimizer = Adam(), metrics = ['acc'])
 	return model
 
 
