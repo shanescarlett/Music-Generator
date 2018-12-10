@@ -1,5 +1,5 @@
 import keras
-import tensorflow
+import tensorflow as tf
 from keras.metrics import *
 
 
@@ -37,38 +37,60 @@ def getModel(modelInput):
 
 
 def getModel2(modelInput):
-	from keras.layers import Dropout, Dense, Activation, CuDNNLSTM, TimeDistributed, Conv1D, Reshape
-	from keras.optimizers import Adam, RMSprop
+	x = modelInput
+	inputLayer = x
+	# x = keras.layers.CuDNNLSTM(128, return_sequences=True, bias_initializer = 'random_uniform')(x)
+	# x = keras.layers.Activation('relu')(x)
+	# x = keras.layers.Dropout(0.3)(x)
+	# x = keras.layers.Conv1D(128, 3, padding = 'same', activation = 'relu')(x)
+	# x = keras.layers.Dropout(0.3)(x)
+	# x = keras.layers.MaxPooling1D(2)(x)
+	x = keras.layers.Conv1D(32, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.Conv1D(64, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	# x = keras.layers.MaxPooling1D(2)(x)
+	x = keras.layers.CuDNNLSTM(512, return_sequences = True, bias_initializer = 'random_uniform')(x)
+	x = keras.layers.Activation('relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.CuDNNLSTM(128, return_sequences = False, bias_initializer = 'random_uniform')(x)
+	x = keras.layers.Activation('relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	# x = keras.layers.Flatten()(x)
+	# x = keras.layers.Dense(512, activation = 'relu')(x)
+	# x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.Dense(257, activation = 'softmax')(x)
+	modelOutput = x
 
-	x = Conv1D(32, (32))(modelInput)
-	x = CuDNNLSTM(512, return_sequences=True, bias_initializer = 'random_uniform')(x)
-	x = Activation('relu')(x)
-	x = Dropout(0.3)(x)
-
-	# x = CuDNNLSTM(1024, return_sequences=False, bias_initializer = 'random_uniform')(modelInput)
-	# x = Activation('sigmoid')(x)
-
-	x = CuDNNLSTM(512, return_sequences = False)(x)
-	x = Activation('relu')(x)
-	x = Dropout(0.3)(x)
-
-	modelOutput = Dense(257, activation = 'softmax')(x)
-
-	model = keras.Model(modelInput, modelOutput)
-	model.compile(loss = 'mean_squared_error', optimizer = Adam(), metrics = ['acc'])
+	model = keras.Model(inputLayer, modelOutput)
+	model.compile(loss = lossFunction3(10), optimizer = keras.optimizers.Nadam(), metrics = ['acc'])
 	return model
 
 
 def getDeltaTimeModel(modelInput):
-	from keras.layers import Dense, Activation, CuDNNLSTM
-	from keras.optimizers import RMSprop
+	x = modelInput
+	inputLayer = x
+	x = keras.layers.Conv1D(32, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.Conv1D(64, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.Conv1D(128, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.CuDNNLSTM(256, return_sequences = True, bias_initializer = 'random_uniform')(x)
+	x = keras.layers.Activation('relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.CuDNNLSTM(128, return_sequences = False, bias_initializer = 'random_uniform')(x)
+	x = keras.layers.Activation('relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.Dense(64, activation = 'relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.Dense(32, activation = 'relu')(x)
+	x = keras.layers.Dropout(0.3)(x)
+	x = keras.layers.Dense(1, activation = 'softmax')(x)
+	modelOutput = x
 
-	x = CuDNNLSTM(1024, return_sequences = False, bias_initializer = 'random_uniform')(modelInput)
-	# x = Activation('sigmoid')(x)
-	modelOutput = Dense(1, activation = 'sigmoid')(x)
-
-	model = keras.Model(modelInput, modelOutput)
-	model.compile(loss = 'mean_squared_error', optimizer = 'adam', metrics = ['acc'])
+	model = keras.Model(inputLayer, modelOutput)
+	model.compile(loss = 'mean_squared_error', optimizer = keras.optimizers.RMSprop(), metrics = ['acc'])
 	return model
 
 
@@ -88,20 +110,33 @@ def lossFunction():
 		import keras.backend.tensorflow_backend as tfb
 		POSITIVE_WEIGHT = 10
 		_epsilon = tfb._to_tensor(tfb.epsilon(), output.dtype.base_dtype)
-		output = tensorflow.clip_by_value(output, _epsilon, 1 - _epsilon)
-		output = tensorflow.log(output / (1 - output))
+		output = tf.clip_by_value(output, _epsilon, 1 - _epsilon)
+		output = tf.log(output / (1 - output))
 		# compute weighted loss
-		loss = tensorflow.nn.weighted_cross_entropy_with_logits(targets = target,
+		loss = tf.nn.weighted_cross_entropy_with_logits(targets = target,
 		                                                logits = output,
 		                                                pos_weight = POSITIVE_WEIGHT)
-		return tensorflow.reduce_mean(loss, axis = -1)
+		return tf.reduce_mean(loss, axis = -1)
 	return f_
 
 
-def lossFunction2():
-	def loss(target, output):
-		flatTarget = K.flatten(target)
-		flatOutput = K.flatten(output)
+def lossFunction2(weight):
+	def loss(yTrue, yPred):
+		error = yPred - yTrue
+		positive = tf.clip_by_value(error, clip_value_min = 0, clip_value_max = float('Inf'))
+		negative = keras.backend.abs(tf.clip_by_value(error, clip_value_min = float('-Inf'), clip_value_max = 0))
+		scaledNegative = negative * weight
+		# summedError = (positive + scaledNegative)
+		return keras.backend.mean(positive) + keras.backend.mean(scaledNegative)
+
+	return loss
+
+
+def lossFunction3(weight):
+	def loss(yTrue, yPred):
+		falsePositives = tf.ceil(tf.clip_by_value(yPred - yTrue, clip_value_min = 0, clip_value_max = float('Inf')))
+		falseNegatives = tf.ceil(tf.clip_by_value(yTrue - yPred, clip_value_min = 0, clip_value_max = float('Inf')))
+		return ((keras.backend.mean(falseNegatives) * weight) + keras.backend.mean(falsePositives)) / 2
 
 	return loss
 
