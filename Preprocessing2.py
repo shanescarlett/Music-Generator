@@ -68,20 +68,24 @@ def encodeNoteEvents(noteEvents):
 
 
 		if event[0] is 'NOTE_ON':
-			currentLine[event[1]] = event[2] / 128
+			# currentLine[event[1]] = event[2] / 128
+			currentLine[event[1]] = 1
 		elif event[0] is 'NOTE_OFF':
 			currentLine[event[1] + 128] = 1
 	return encoded
 
 
-def createModelIO(slices, sequenceSize, stride):
+def createModelIO(slices, sequenceSize, stride, outputSize = 1):
 	networkInput = []
 	networkOutput = []
 	encodedLength = len(slices[0])
 	# create input sequences and the corresponding outputs
-	for i in range(0, len(slices) - sequenceSize, stride):
-		networkInput.append(slices[i:i + sequenceSize])
-		networkOutput.append(slices[i + sequenceSize])
+	for i in range(0, len(slices) - sequenceSize - outputSize, stride):
+		networkInput.append(slices[i:(i + sequenceSize)])
+		if outputSize == 1:
+			networkOutput.append(slices[i + sequenceSize])
+		else:
+			networkOutput.append(slices[(i + sequenceSize):(i + sequenceSize + outputSize)])
 
 	n_patterns = len(networkInput)
 	networkInput = np.reshape(networkInput, (n_patterns, sequenceSize, encodedLength))
