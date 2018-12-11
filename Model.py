@@ -45,9 +45,9 @@ def getModel2(modelInput):
 	# x = keras.layers.Conv1D(128, 3, padding = 'same', activation = 'relu')(x)
 	# x = keras.layers.Dropout(0.3)(x)
 	# x = keras.layers.MaxPooling1D(2)(x)
-	x = keras.layers.Conv1D(32, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Conv1D(32, 3, padding = 'same', activation = 'relu', data_format = 'channels_first')(x)
 	x = keras.layers.Dropout(0.3)(x)
-	x = keras.layers.Conv1D(64, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Conv1D(64, 3, padding = 'same', activation = 'relu', data_format = 'channels_first')(x)
 	x = keras.layers.Dropout(0.3)(x)
 	# x = keras.layers.MaxPooling1D(2)(x)
 	x = keras.layers.CuDNNLSTM(512, return_sequences = True, bias_initializer = 'random_uniform')(x)
@@ -63,7 +63,7 @@ def getModel2(modelInput):
 	modelOutput = x
 
 	model = keras.Model(inputLayer, modelOutput)
-	model.compile(loss = lossFunction3(10), optimizer = keras.optimizers.Nadam(), metrics = ['acc'])
+	model.compile(loss = 'mean_squared_error', optimizer = keras.optimizers.Nadam(), metrics = ['acc'])
 	return model
 
 
@@ -92,6 +92,72 @@ def getDeltaTimeModel(modelInput):
 	model = keras.Model(inputLayer, modelOutput)
 	model.compile(loss = 'mean_squared_error', optimizer = keras.optimizers.RMSprop(), metrics = ['acc'])
 	return model
+
+
+def getAutoencoderModel(inputLayer):
+	x = inputLayer
+
+	# x = keras.layers.Conv1D(16, 3, padding = 'same', activation = 'linear')(x)
+	# x = keras.layers.Dropout(0.2)(x)
+	# x = keras.layers.Conv1D(32, 3, padding = 'same', activation = 'linear')(x)
+	# x = keras.layers.Dropout(0.2)(x)
+	# x = keras.layers.Conv1D(64, 3, padding = 'same', activation = 'linear')(x)
+	# x = keras.layers.Dropout(0.2)(x)
+	# x = keras.layers.CuDNNLSTM(128, return_sequences = True)(x)
+	# x = keras.layers.Flatten()(x)
+	# x = keras.layers.Dense(128)(x)
+	# encoded = x
+	# x = keras.layers.Dense(128 * sequenceLength)(x)
+	# x = keras.layers.Reshape((sequenceLength, 128))(x)
+	# x = keras.layers.CuDNNLSTM(64, return_sequences = True)(x)
+	# x = keras.layers.Dropout(0.2)(x)
+	# x = keras.layers.Conv1D(32, 3, padding = 'same', activation = 'linear')(x)
+	# x = keras.layers.Dropout(0.2)(x)
+	# x = keras.layers.Conv1D(16, 3, padding = 'same', activation = 'linear')(x)
+	# x = keras.layers.Dropout(0.2)(x)
+	# x = keras.layers.Conv1D(257, 3, padding = 'same', activation = 'softmax')(x)
+
+	x = keras.layers.Reshape((256, 1))(x)
+	x = keras.layers.Conv1D(16, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.MaxPooling1D(2)(x)
+	x = keras.layers.Dropout(0.2)(x)
+	x = keras.layers.Conv1D(32, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.MaxPooling1D(2)(x)
+	x = keras.layers.Dropout(0.2)(x)
+	x = keras.layers.Conv1D(64, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.MaxPooling1D(2)(x)
+	x = keras.layers.Dropout(0.2)(x)
+	x = keras.layers.Flatten()(x)
+	x = keras.layers.Dense(128, activation = 'relu')(x)
+	x = keras.layers.Dense(32, activation = 'relu')(x)
+	x = keras.layers.Dense(16, activation = 'relu')(x)
+	encoded = x
+	x = keras.layers.Dense(32, activation = 'relu')(x)
+	x = keras.layers.Dense(64, activation = 'relu')(x)
+	x = keras.layers.Dense(2048, activation = 'relu')(x)
+	x = keras.layers.Reshape((32, 64))(x)
+	x = keras.layers.Dropout(0.1)(x)
+	x = keras.layers.UpSampling1D(2)(x)
+	x = keras.layers.Conv1D(32, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Dropout(0.1)(x)
+	x = keras.layers.UpSampling1D(2)(x)
+	x = keras.layers.Conv1D(16, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Dropout(0.1)(x)
+	x = keras.layers.UpSampling1D(2)(x)
+	x = keras.layers.Conv1D(1, 3, padding = 'same', activation = 'relu')(x)
+	x = keras.layers.Reshape((256,))(x)
+	x = keras.layers.Dense(256, activation = 'tanh')(x)
+
+	decoded = x
+	outputLayer = x
+
+	encoderModel = keras.Model(inputLayer, encoded)
+	trainerModel = keras.Model(inputLayer, outputLayer)
+
+	encoderModel.compile(loss = 'mean_squared_error', optimizer = keras.optimizers.RMSprop(), metrics = ['acc'])
+	trainerModel.compile(loss = 'mean_squared_error', optimizer = keras.optimizers.Adam(lr = 0.001), metrics = ['acc'])
+
+	return trainerModel, encoderModel
 
 
 def lossFunction():
