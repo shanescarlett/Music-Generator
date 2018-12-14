@@ -36,27 +36,49 @@ def getModel(modelInput):
 	return model
 
 
-def getModel2(modelInput):
-	x = modelInput
-	inputLayer = x
+def getModel2(inputLayer):
+	x = inputLayer
+
+	# LSTM
 	x = keras.layers.TimeDistributed(keras.layers.Reshape((257, 1)))(x)
 	x = keras.layers.TimeDistributed(keras.layers.Conv1D(16, 3, padding = 'same', activation = 'relu'))(x)
 	x = keras.layers.TimeDistributed(keras.layers.MaxPooling1D(2))(x)
-	x = keras.layers.Dropout(0.2)(x)
+	# x = keras.layers.TimeDistributed(keras.layers.Dropout(0.2))(x)
 	x = keras.layers.TimeDistributed(keras.layers.Conv1D(32, 3, padding = 'same', activation = 'relu'))(x)
 	x = keras.layers.TimeDistributed(keras.layers.MaxPooling1D(2))(x)
-	x = keras.layers.Dropout(0.2)(x)
+	# x = keras.layers.TimeDistributed(keras.layers.Dropout(0.2))(x)
 	x = keras.layers.TimeDistributed(keras.layers.Conv1D(64, 3, padding = 'same', activation = 'relu'))(x)
 	x = keras.layers.TimeDistributed(keras.layers.MaxPooling1D(2))(x)
-	x = keras.layers.Dropout(0.2)(x)
+	# x = keras.layers.TimeDistributed(keras.layers.Dropout(0.2))(x)
 	x = keras.layers.TimeDistributed(keras.layers.Flatten())(x)
-	x = keras.layers.CuDNNLSTM(256, return_sequences = False, bias_initializer = 'random_uniform')(x)
+	x = keras.layers.TimeDistributed(keras.layers.Dense(128, activation = 'relu'))(x)
+	x = keras.layers.TimeDistributed(keras.layers.Dense(32, activation = 'relu'))(x)
+	x = keras.layers.CuDNNLSTM(512, return_sequences = False, bias_initializer = 'random_uniform')(x)
 	x = keras.layers.Activation('relu')(x)
 	x = keras.layers.Dense(257, activation = 'tanh')(x)
-	modelOutput = x
 
-	model = keras.Model(inputLayer, modelOutput)
-	model.compile(loss = 'mean_squared_error', optimizer = keras.optimizers.Nadam(), metrics = ['acc'])
+
+
+	# Pure CNN
+	# x = keras.layers.TimeDistributed(keras.layers.Reshape((257, 1)))(x)
+	# x = keras.layers.Conv2D(32, (3, 3), padding = 'same', activation = 'relu')(x)
+	# x = keras.layers.MaxPooling2D((1, 2))(x)
+	# x = keras.layers.Conv2D(64, (3, 3), padding = 'same', activation = 'relu')(x)
+	# x = keras.layers.MaxPooling2D((1, 2))(x)
+	# x = keras.layers.Conv2D(128, (3, 3), padding = 'same', activation = 'relu')(x)
+	# x = keras.layers.MaxPooling2D((1, 2))(x)
+	# x = keras.layers.Conv2D(256, (3, 3), padding = 'same', activation = 'relu')(x)
+	# x = keras.layers.MaxPooling2D((1, 2))(x)
+	# x = keras.layers.TimeDistributed(keras.layers.Dense(64))(x)
+	# x = keras.layers.TimeDistributed(keras.layers.Dense(16))(x)
+	# x = keras.layers.Flatten()(x)
+	# x = keras.layers.Dense(1024, activation = 'relu')(x)
+	# x = keras.layers.Dense(257, activation = 'tanh')(x)
+
+	outputLayer = x
+
+	model = keras.Model(inputLayer, outputLayer)
+	model.compile(loss = 'mean_squared_error', optimizer = keras.optimizers.Adam(), metrics = ['acc'])
 	return model
 
 
@@ -216,6 +238,6 @@ def trainModel(model, num_epochs, filename, x_train, y_train, batch_size, sample
 
 
 def loadModel(model, fileName):
-	path = 'weights/' + fileName
+	path = fileName
 	model.load_weights(path)
 
