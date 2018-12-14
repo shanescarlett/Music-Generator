@@ -19,11 +19,11 @@ def encodedToMidi(encoded):
 		deltaTime = music21.midi.DeltaTime(track, time = int(np.round(slice[256])), channel = 1)
 		track.events.append(deltaTime)
 		for i in range(len(slice) - 1 - 128):
-			if slice[i] > 5 and i != 72:
+			if slice[i] > 0:
 				event = music21.midi.MidiEvent(track, type = 'NOTE_ON')
 				event.pitch = i
-				# event.velocity = slice[i]
-				event.velocity = 64
+				event.velocity = slice[i]
+				# event.velocity = 64
 				event.channel = 1
 				track.events.append(event)
 		for i in range(128, len(slice) - 1):
