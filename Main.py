@@ -140,9 +140,11 @@ def train2(sequenceLength, ioFilename, modelFilename, loadPrevious = False):
 	model.summary()
 	if loadPrevious:
 		m.loadModel(model, modelFilename)
-	checkpoint = keras.callbacks.ModelCheckpoint(modelFilename, monitor = 'val_acc', verbose = 1, save_best_only = True,
+	checkpoint = keras.callbacks.ModelCheckpoint(modelFilename, monitor = 'acc', verbose = 1, save_best_only = True,
 	                                             mode = 'max')
-	model.fit(x = modelX, y = modelY, epochs = 1000, batch_size = 1024, validation_split = 0.1, callbacks = [checkpoint], verbose = 0)
+	visualisation = keras.callbacks.TensorBoard(log_dir='./Graph', histogram_freq=0,
+          write_graph=True, write_images=True)
+	model.fit(x = modelX, y = modelY, epochs = 1000, batch_size = 128, callbacks = [checkpoint, visualisation], verbose = 1)
 
 
 def trainDeltaTime(sequenceLength, ioFilename, modelFilename, loadPrevious = False):
@@ -157,6 +159,32 @@ def trainDeltaTime(sequenceLength, ioFilename, modelFilename, loadPrevious = Fal
 	checkpoint = keras.callbacks.ModelCheckpoint(modelFilename, monitor = 'val_acc', verbose = 1, save_best_only = True,
 	                                             mode = 'max')
 	model.fit(x = modelX, y = modelY, epochs = 1000, batch_size = 1024, validation_split = 0.1, callbacks = [checkpoint], verbose = 1)
+
+
+def trainAutoencoder(sequenceLength, ioFilename, modelFilename, loadPrevious = False):
+	print('Autoencoder Trainer')
+	modelX, modelY = loadData(ioFilename)
+	modelX = modelX[:, 0, 0:-1]
+	modelInput = keras.layers.Input((256,))
+	trainerModel, encoderModel = m.getAutoencoderModel(modelInput)
+	trainerModel.summary()
+	if loadPrevious:
+		m.loadModel(trainerModel, modelFilename)
+	checkpoint = keras.callbacks.ModelCheckpoint(modelFilename, monitor = 'val_acc', verbose = 1, save_best_only = True,
+	                                             mode = 'max')
+	trainerModel.fit(x = modelX, y = modelX, epochs = 1000, batch_size = 1024, validation_split = 0.1, callbacks = [checkpoint], verbose = 0)
+
+
+def testAutoencoder(ioFilename, modelFilename):
+	modelX, modelY = loadData(ioFilename)
+	modelX = modelX[:, 0, 0:-1]
+	modelInput = keras.layers.Input((256,))
+	trainerModel, encoderModel = m.getAutoencoderModel(modelInput)
+	trainerModel.load_weights(modelFilename)
+	index = np.random.randint(0, len(modelX) - 1)
+	sample = modelX[index:index + 10]
+	result = trainerModel.predict(sample)
+	print(result)
 
 
 def generate2(length, stride = None):
@@ -176,7 +204,10 @@ def generate2(length, stride = None):
 		prediction_input = np.reshape(pattern, (1, len(pattern), 257))
 		prediction = model.predict(prediction_input, verbose = 0)
 		# result = divMax(prediction)
-		result = prediction
+		notes = prediction[0:1, 0:-1]
+		result = np.where(notes[0] > 0.2, 1, 0)
+		result = np.append(result, prediction[0][-1])
+		result = np.asarray([result])
 		if stride is not None and i % stride == 0:
 			newRandom = np.random.randint(0, len(modelX) - 1)
 			prediction_output.append(modelX[newRandom, 0:1, :])
@@ -234,17 +265,20 @@ def save2(data):
 
 
 def main():
-	sequenceLength = 16
+	sequenceLength = 4
 	outputLength = 1
-	stride = 4
+	stride = 1
 
 	# norm.normaliseKeys('C:/Users/Main/Documents/Data/Piano')
 
 	# preprocessData2('intermediate2')
-	makeData2('intermediate2', 'model2', sequenceLength, stride, outputLength)
-	# train2(sequenceLength, 'model2', 'm2.h5', loadPrevious = False)
-	trainDeltaTime(sequenceLength, 'model2', 'm2dt.h5', loadPrevious = False)
-	deltaTime = generateDeltaTime(length = 128)
+	# makeData2('intermediate2', 'model2', sequenceLength, stride, outputLength)
+	train2(sequenceLength, 'model2', 'm2.h5', loadPrevious = False)
+	# trainDeltaTime(sequenceLength, 'model2', 'm2dt.h5', loadPrevious = False)
+	# trainAutoencoder(sequenceLength, 'model2', 'm2ae.h5', loadPrevious = False)
+	# testAutoencoder('model2', 'm2ae.h5')
+
+	# deltaTime = generateDeltaTime(length = 128)
 	output = generate2(length = 1024, stride = 16)
 	save2(output)
 
